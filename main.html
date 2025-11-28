@@ -1,0 +1,983 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ODL Transcript Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f7fb; color: #0f172a; }
+        .shell { max-width: 1200px; margin: 0 auto; padding: 32px 20px 64px; }
+        header { margin-bottom: 24px; }
+        header h1 { margin: 8px 0 4px; font-size: 2rem; }
+        header p { margin: 0; color: #475569; }
+        .eyebrow { text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.7rem; color: #94a3b8; }
+        .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .tab-button { border: 1px solid #d0d7e2; background: #fff; color: #0f172a; padding: 10px 18px; border-radius: 999px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+        .tab-button.active { background: #0ea5e9; border-color: #0ea5e9; color: #fff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .sub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+        .sub-tab { border: 1px solid #d0d7e2; background: #fff; color: #475569; padding: 8px 14px; border-radius: 999px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+        .sub-tab.active { background: #0f172a; border-color: #0f172a; color: #fff; }
+        .sub-section { display: none; }
+        .sub-section.active { display: block; }
+        .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 8px 18px rgba(15,23,42,0.08); }
+        .stack { display: grid; gap: 20px; }
+        .grid-two { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+        label { display: block; font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; color: #475569; }
+        input[type="text"], input[type="password"], input[type="email"], input[type="search"] { width: 100%; border: 1px solid #cbd5f5; border-radius: 10px; padding: 10px 12px; font-size: 1rem; transition: border-color 0.2s; }
+        input:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 2px rgba(14,165,233,0.15); }
+        button { font-family: inherit; cursor: pointer; }
+        .primary-btn { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff; border: none; padding: 11px 20px; border-radius: 999px; font-weight: 600; box-shadow: 0 6px 18px rgba(14,165,233,0.25); display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .primary-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(14,165,233,0.3); }
+        .secondary-btn { background: #0f172a; color: #fff; border: none; padding: 10px 18px; border-radius: 999px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .muted { color: #64748b; font-size: 0.95rem; }
+        .hidden { display: none !important; }
+        .status { border-radius: 14px; padding: 12px 16px; font-size: 0.95rem; display: flex; gap: 10px; align-items: center; }
+        .status.info { background: #eef2ff; border: 1px solid #c7d2fe; color: #4338ca; }
+        .status.success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857; }
+        .status.error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        th, td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.12em; color: #94a3b8; }
+        tbody tr:hover { background: #f8fafc; }
+        .slip-surface { background: #fff; padding: 14px 16px; font-family: 'Times New Roman', serif; color: #0f172a; line-height: 1.35; }
+        .slip-header { border-bottom: 1px solid #d7dce7; padding-bottom: 8px; margin-bottom: 10px; font-size: 0.95rem; }
+        .slip-address { font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; }
+        .slip-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 6px 12px; font-size: 0.92rem; margin-top: 10px; }
+        .slip-meta strong { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.16em; color: #475569; margin-bottom: 1px; }
+        .slip-semester { margin-top: 12px; }
+        .slip-semester-title { font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 4px; color: #475569; display: flex; justify-content: space-between; }
+        .slip-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+        .slip-table th, .slip-table td { border: 1px solid #d7dce7; padding: 5px 6px; }
+        .slip-table th { background: #f5f7fb; font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: #475569; }
+        .slip-table th:nth-child(3),
+        .slip-table td:nth-child(3),
+        .slip-table th:nth-child(4),
+        .slip-table td:nth-child(4),
+        .slip-table th:nth-child(5),
+        .slip-table td:nth-child(5) { text-align: center; width: 70px; }
+        .slip-table th:nth-child(6),
+        .slip-table td:nth-child(6) { text-align: right; width: 80px; }
+        .slip-semester-summary { font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; text-align: right; margin-top: 4px; color: #475569; }
+        .stat-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+        .stat { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; }
+        .stat span { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: #94a3b8; margin-bottom: 4px; }
+        .stat strong { font-size: 1.4rem; }
+        .file-input { display: flex; flex-direction: column; gap: 10px; }
+        .table-wrapper { border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #fff; }
+        .pagination { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-top: 10px; }
+        .pagination button { border: 1px solid #cbd5f5; background: #fff; padding: 6px 12px; border-radius: 8px; }
+        #printable-slip { position: absolute; left: -9999px; top: -9999px; overflow: visible; width: auto; height: auto; }
+        @media (max-width: 600px) {
+            .slip-header { flex-direction: column; gap: 10px; }
+        }
+        @media print {
+            body { background: #fff; }
+            body * { visibility: hidden; }
+            #printable-slip, #printable-slip * { visibility: visible; }
+            #printable-slip { position: absolute; left: 0; top: 0; width: 210mm; min-height: 297mm; padding: 15mm 20mm; background: #fff; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <header>
+            <div class="eyebrow">Open & Distance Learning</div>
+            <h1>ODL Transcript Workspace</h1>
+            <p>Upload transcript data once, let students and staff retrieve polished slips anytime.</p>
+        </header>
+        <div class="tabs">
+            <button class="tab-button active" data-tab="student-tab">Student Access</button>
+            <button class="tab-button" data-tab="admin-tab">Admin Console</button>
+        </div>
+        <section id="student-tab" class="tab-content active">
+            <div class="stack">
+                <div class="card">
+                    <h2>Check your transcript</h2>
+                    <p class="muted">Enter IC and the name that appears on your identification card.</p>
+                    <form id="studentLoginForm" class="stack" style="margin-top:16px;">
+                        <div>
+                            <label for="studentIcInput">IC Number</label>
+                            <input type="text" id="studentIcInput" placeholder="900906-14-XXXX" required>
+                        </div>
+                        <div>
+                            <label for="studentNameInput">Full Name</label>
+                            <input type="text" id="studentNameInput" placeholder="As shown on IC" required>
+                        </div>
+                        <button type="submit" class="primary-btn">Retrieve transcript</button>
+                        <p id="student-login-error" class="hidden status error"></p>
+                        <p class="muted">Build ID: <span id="login-app-id">--</span></p>
+                    </form>
+                </div>
+                <div id="studentResultCard" class="card hidden">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                        <div>
+                            <h3>Official transcript</h3>
+                            <p class="muted">Print-ready view</p>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <button type="button" id="clearStudentView" class="secondary-btn">Clear</button>
+                            <button type="button" id="printStudentSlip" class="primary-btn">Print</button>
+                        </div>
+                    </div>
+                    <div id="student-slip-output" style="margin-top:16px;"></div>
+                </div>
+            </div>
+        </section>
+        <section id="admin-tab" class="tab-content">
+            <div class="stack">
+                <div id="admin-login-card" class="card">
+                    <h2>Staff access</h2>
+                    <p class="muted">Enter the shared access code to open the console.</p>
+                    <form id="adminAccessForm" class="stack" style="margin-top:16px; max-width:320px;">
+                        <div>
+                            <label for="adminCodeInput">Access code</label>
+                            <input type="password" id="adminCodeInput" placeholder="Enter code" required>
+                        </div>
+                        <button type="submit" class="primary-btn">Unlock console</button>
+                        <p id="admin-inline-error" class="hidden status error"></p>
+                    </form>
+                    <p class="muted" style="margin-top:12px;">Default code lives inside <code>webODL.html</code>. Change it before deploying.</p>
+                </div>
+                <div id="admin-workspace" class="hidden stack">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <div>
+                                <p class="eyebrow">Administrator</p>
+                                <h3 id="adminWelcomeEmail">Admin User</h3>
+                                <p class="muted">Manage sessions, imports, and transcripts.</p>
+                            </div>
+                            <button id="adminLogoutBtn" class="secondary-btn">Sign out</button>
+                        </div>
+                        <div class="stat-board" style="margin-top:16px;">
+                            <div class="stat">
+                                <span>Course catalog</span>
+                                <strong id="catalogStat">0</strong>
+                            </div>
+                            <div class="stat">
+                                <span>Student records</span>
+                                <strong id="studentStat">0</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="sub-tabs">
+                            <button class="sub-tab active" data-section="admin-session">Session Setting</button>
+                            <button class="sub-tab" data-section="admin-upload">Upload History & Append Marks</button>
+                            <button class="sub-tab" data-section="admin-directory">Student Directory</button>
+                        </div>
+                        <div id="admin-session" class="sub-section active">
+                            <h3>Session setting</h3>
+                            <p class="muted">Update the academic session reference and quickly review stats.</p>
+                            <div style="display:flex; gap:12px; margin-top:12px; align-items:flex-start; flex-wrap:wrap;">
+                                <div style="flex:1; min-width:220px;">
+                                    <label for="setSessionInput">Active session</label>
+                            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                                <input type="text" id="setSessionInput" placeholder="e.g., 2025-09" style="flex:1; min-width:220px;">
+                                <button id="saveSessionBtn" class="primary-btn" style="white-space:nowrap;">Save Session</button>
+                            </div>
+                                </div>
+                            </div>
+                            <div id="admin-status" class="hidden status info" style="margin-top:16px;">
+                                <span id="admin-status-icon">i</span>
+                                <p id="admin-status-text">Status</p>
+                            </div>
+                        </div>
+                        <div id="admin-upload" class="sub-section">
+                            <h3>Upload history & append marks</h3>
+                            <p class="muted">Follow the instructions below to ensure every import aligns with the required schema.</p>
+                            <div class="grid-two" style="margin-top:16px;">
+                                <div>
+                                    <h4>Initialize / Reset history</h4>
+                                    <div class="muted" style="font-size:0.9rem;">
+                                        <p style="margin-bottom:8px;">Use <strong>marks_with_semesters_2.xlsx</strong> &mdash; sheet <strong>Joined</strong>.</p>
+                                        <p style="margin-bottom:6px;">Required columns:</p>
+                                        <ul style="margin:0 0 8px 18px; padding:0; list-style:disc;">
+                                            <li>ID, Name, IC, Intake</li>
+                                            <li>CourseCode, Course Title, Credits</li>
+                                            <li>Semester, SessionLabel (optional)</li>
+                                            <li>Mark or Letter, GradePoints (optional)</li>
+                                        </ul>
+                                        <p style="margin-bottom:0;">Only include finalised grades. Duplicate IDs overwrite previous history.</p>
+                                    </div>
+                                    <div class="file-input" style="margin-top:12px; align-items:flex-start;">
+                                        <input type="file" id="historyFile" accept=".xlsx,.csv" style="width:100%;">
+                                        <button id="processHistoryBtn" class="primary-btn" style="align-self:flex-start;">Import history</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4>Append marks</h4>
+                                    <div class="muted" style="font-size:0.9rem;">
+                                        <p style="margin-bottom:8px;">Use a simple CSV/XLSX with the following columns:</p>
+                                        <ul style="margin:0 0 8px 18px; padding:0; list-style:disc;">
+                                            <li>ID (matric number)</li>
+                                            <li>CourseCode (must match catalog)</li>
+                                            <li>Mark (numeric) or Letter</li>
+                                            <li>Optional: Title, Credits override, SessionLabel</li>
+                                        </ul>
+                                        <p style="margin-bottom:0;">Marks will be appended to the current active session. Missing IDs are skipped and reported.</p>
+                                    </div>
+                                    <div class="file-input" style="margin-top:12px; align-items:flex-start;">
+                                        <input type="file" id="appendFile" accept=".xlsx,.csv" style="width:100%;">
+                                        <button id="appendMarksBtn" class="primary-btn" style="align-self:flex-start;">Append marks</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="admin-directory" class="sub-section">
+                            <div id="admin-directory-card">
+                                <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+                                    <div>
+                                        <h3>Student directory</h3>
+                                        <p class="muted">Search by matric ID or name</p>
+                                    </div>
+                                    <input type="search" id="studentSearch" placeholder="Search..." style="max-width:240px;">
+                                </div>
+                                <div class="table-wrapper" style="margin-top:12px;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Name</th>
+                                                <th style="text-align:right;">CGPA</th>
+                                                <th style="text-align:right;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="studentList">
+                                            <tr><td colspan="4" style="text-align:center; padding:16px;">No data</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="pagination">
+                                    <button id="prevPage">Prev</button>
+                                    <p id="paginationText">No data</p>
+                                    <button id="nextPage">Next</button>
+                                </div>
+                            </div>
+                            <div id="admin-slip-card" class="hidden">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+                                    <div>
+                                        <h3>Transcript preview</h3>
+                                        <p class="muted">Selected student record</p>
+                                    </div>
+                                    <div style="display:flex; gap:8px;">
+                                        <button type="button" id="backToDirectoryBtn" class="secondary-btn">Back to directory</button>
+                                        <button type="button" id="printAdminSlip" class="primary-btn">Print</button>
+                                    </div>
+                                </div>
+                                <div id="admin-slip-output" style="margin-top:16px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div id="printable-slip"></div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const STORAGE_KEY = 'odl_offline_records_v1';
+            const ADMIN_ACCESS_CODE = 'admin';
+            const STATUS_STYLES = {
+                info: 'status info',
+                success: 'status success',
+                error: 'status error'
+            };
+            const STATUS_ICONS = { info: 'i', success: 'v', error: '!' };
+            const FIELD_MAP = {
+                id: ['ID','Id','id','Student ID','StudentID','Matric','MatricNo','Matric No','Student_Id'],
+                name: ['Name','StudentName','Student Name'],
+                ic: ['IC','Ic','ic','IC No','ICNo','MyKad','MyKad No','identity'],
+                intake: ['Intake','IntakeCode','Intake Code','Cohort'],
+                session: ['Session','SessionLabel','AcademicSession','Session Label'],
+                courseCode: ['CourseCode','Course Code','Coursecode','SubjectCode','Code'],
+                courseTitle: ['Title','CourseTitle','Course Title','Subject'],
+                credits: ['Credits','Credit','CreditHour','Credit Hour','CR'],
+                mark: ['Mark','Marks','Score'],
+                gradeLetter: ['Letter','Grade','GradeLetter'],
+                gradePoints: ['GradePoints','Grade Points'],
+                creditsAttempted: ['CreditsAttempted','Credits Attempted'],
+                creditsEarned: ['CreditsEarned','Credits Earned'],
+                semester: ['Semester','Sem','Sem No','Term']
+            };
+            const defaultStore = { session: '', catalog: {}, students: {} };
+            let dataStore = { ...defaultStore };
+            const ui = {
+                appId: `ODL-${Date.now().toString(36).toUpperCase()}`,
+                adminIdentity: '',
+                adminLoggedIn: false,
+                table: { page: 1, size: 30, filter: '' }
+            };
+
+            const el = {
+                tabButtons: document.querySelectorAll('.tab-button'),
+                tabContents: document.querySelectorAll('.tab-content'),
+                subTabs: document.querySelectorAll('.sub-tab'),
+                subSections: document.querySelectorAll('.sub-section'),
+                studentForm: document.getElementById('studentLoginForm'),
+                studentIC: document.getElementById('studentIcInput'),
+                studentName: document.getElementById('studentNameInput'),
+                studentError: document.getElementById('student-login-error'),
+                studentResultCard: document.getElementById('studentResultCard'),
+                studentSlip: document.getElementById('student-slip-output'),
+                clearStudentBtn: document.getElementById('clearStudentView'),
+                printStudentBtn: document.getElementById('printStudentSlip'),
+                loginAppId: document.getElementById('login-app-id'),
+                adminAccessForm: document.getElementById('adminAccessForm'),
+                adminCodeInput: document.getElementById('adminCodeInput'),
+                adminInlineError: document.getElementById('admin-inline-error'),
+                adminLoginCard: document.getElementById('admin-login-card'),
+                adminWorkspace: document.getElementById('admin-workspace'),
+                adminWelcomeEmail: document.getElementById('adminWelcomeEmail'),
+                adminLogoutBtn: document.getElementById('adminLogoutBtn'),
+                setSessionInput: document.getElementById('setSessionInput'),
+                saveSessionBtn: document.getElementById('saveSessionBtn'),
+                catalogStat: document.getElementById('catalogStat'),
+                studentStat: document.getElementById('studentStat'),
+                historyFile: document.getElementById('historyFile'),
+                processBtn: document.getElementById('processHistoryBtn'),
+                appendFile: document.getElementById('appendFile'),
+                appendBtn: document.getElementById('appendMarksBtn'),
+                adminStatus: document.getElementById('admin-status'),
+                adminStatusText: document.getElementById('admin-status-text'),
+                adminStatusIcon: document.getElementById('admin-status-icon'),
+                studentSearch: document.getElementById('studentSearch'),
+                prevPage: document.getElementById('prevPage'),
+                nextPage: document.getElementById('nextPage'),
+                paginationText: document.getElementById('paginationText'),
+                studentList: document.getElementById('studentList'),
+                adminDirectoryCard: document.getElementById('admin-directory-card'),
+                adminSlipCard: document.getElementById('admin-slip-card'),
+                adminSlipOutput: document.getElementById('admin-slip-output'),
+                backToDirectoryBtn: document.getElementById('backToDirectoryBtn'),
+                printAdminBtn: document.getElementById('printAdminSlip'),
+                printableSlip: document.getElementById('printable-slip')
+            };
+
+            init();
+
+            function init() {
+                hydrateStore();
+                if (el.loginAppId) el.loginAppId.textContent = ui.appId;
+                if (el.setSessionInput) el.setSessionInput.value = dataStore.session || '';
+                updateAdminOverview();
+                renderStudentTable();
+                attachEvents();
+                resetSlipViews();
+                setActiveTab('student-tab');
+            }
+
+            function attachEvents() {
+                el.tabButtons.forEach(btn => btn.addEventListener('click', () => setActiveTab(btn.dataset.tab)));
+                el.studentForm?.addEventListener('submit', handleStudentLogin);
+                el.subTabs.forEach(btn => btn.addEventListener('click', () => setSubSection(btn.dataset.section)));
+                el.clearStudentBtn?.addEventListener('click', () => {
+                    el.studentResultCard?.classList.add('hidden');
+                    resetSlipViews();
+                });
+                el.printStudentBtn?.addEventListener('click', () => window.print());
+                el.printAdminBtn?.addEventListener('click', () => window.print());
+                el.backToDirectoryBtn?.addEventListener('click', () => {
+                    showDirectoryPanel();
+                });
+                el.adminAccessForm?.addEventListener('submit', handleAdminLogin);
+                el.adminLogoutBtn?.addEventListener('click', () => {
+                    ui.adminLoggedIn = false;
+                    ui.adminIdentity = '';
+                    showDirectoryPanel();
+                    el.adminWorkspace?.classList.add('hidden');
+                    el.adminLoginCard?.classList.remove('hidden');
+                });
+                el.saveSessionBtn?.addEventListener('click', () => {
+                    const value = (el.setSessionInput?.value || '').trim();
+                    saveSession(value);
+                });
+                el.processBtn?.addEventListener('click', async () => {
+                    if (!el.historyFile?.files?.length) {
+                        setAdminStatus('error', 'Select a file to import.');
+                        return;
+                    }
+                    try {
+                        setAdminStatus('info', 'Reading file...');
+                        const rows = await parseFile(el.historyFile, 'Joined');
+                        handleHistoryImport(rows);
+                        el.historyFile.value = '';
+                    } catch (err) {
+                        setAdminStatus('error', err?.message || 'Unable to parse the file.');
+                    }
+                });
+                el.appendBtn?.addEventListener('click', async () => {
+                    if (!el.appendFile?.files?.length) {
+                        setAdminStatus('error', 'Select a file to append.');
+                        return;
+                    }
+                    try {
+                        setAdminStatus('info', 'Reading append file...');
+                        const rows = await parseFile(el.appendFile);
+                        handleAppend(rows);
+                        el.appendFile.value = '';
+                    } catch (err) {
+                        setAdminStatus('error', err?.message || 'Unable to parse the file.');
+                    }
+                });
+                el.studentSearch?.addEventListener('input', (event) => {
+                    ui.table.filter = (event.target.value || '').trim().toLowerCase();
+                    ui.table.page = 1;
+                    renderStudentTable();
+                });
+                el.prevPage?.addEventListener('click', () => {
+                    if (ui.table.page > 1) {
+                        ui.table.page -= 1;
+                        renderStudentTable();
+                    }
+                });
+                el.nextPage?.addEventListener('click', () => {
+                    ui.table.page += 1;
+                    renderStudentTable();
+                });
+                el.studentList?.addEventListener('click', (event) => {
+                    const row = event.target.closest('tr[data-student]');
+                    if (row) viewAdminSlip(row.dataset.student);
+                });
+            }
+
+            function setActiveTab(id) {
+                el.tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === id));
+                el.tabContents.forEach(section => section.classList.toggle('active', section.id === id));
+            }
+
+            function setSubSection(id) {
+                el.subTabs.forEach(btn => btn.classList.toggle('active', btn.dataset.section === id));
+                el.subSections.forEach(sec => sec.classList.toggle('active', sec.id === id));
+                if (id !== 'admin-directory') {
+                    showDirectoryPanel();
+                }
+            }
+
+            function handleAdminLogin(event) {
+                event.preventDefault();
+                const code = (el.adminCodeInput?.value || '').trim();
+                if (!code) {
+                    showAdminInlineError('Enter the access code to continue.');
+                    return;
+                }
+                if (code !== ADMIN_ACCESS_CODE) {
+                    showAdminInlineError('Invalid access code.');
+                    return;
+                }
+                showAdminInlineError('');
+                el.adminAccessForm?.reset();
+                ui.adminLoggedIn = true;
+                ui.adminIdentity = 'Admin';
+                el.adminLoginCard?.classList.add('hidden');
+                el.adminWorkspace?.classList.remove('hidden');
+                if (el.adminWelcomeEmail) el.adminWelcomeEmail.textContent = ui.adminIdentity;
+                setAdminStatus('info', 'You are working with local data. Import the latest worksheet when needed.');
+            }
+
+            function showAdminInlineError(message) {
+                if (!el.adminInlineError) return;
+                if (!message) {
+                    el.adminInlineError.classList.add('hidden');
+                    el.adminInlineError.textContent = '';
+                    return;
+                }
+                el.adminInlineError.textContent = message;
+                el.adminInlineError.classList.remove('hidden');
+            }
+
+            function hydrateStore() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        dataStore = { ...defaultStore, ...parsed };
+                        if (!parsed.catalog) dataStore.catalog = {};
+                        if (!parsed.students) dataStore.students = {};
+                    }
+                } catch (err) {
+                    console.warn('Unable to read stored records', err);
+                    dataStore = { ...defaultStore };
+                }
+            }
+
+            function persistStore() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataStore));
+                } catch (err) {
+                    console.warn('Unable to persist dataset', err);
+                }
+            }
+            function handleStudentLogin(event) {
+                event.preventDefault();
+                const ic = normalizeIC(el.studentIC?.value);
+                const name = (el.studentName?.value || '').trim().toLowerCase();
+                if (!ic || !name) {
+                    setStudentError('Enter both IC and name to continue.');
+                    return;
+                }
+                if (Object.keys(dataStore.students || {}).length === 0) {
+                    setStudentError('No dataset available. Contact the administrator.');
+                    return;
+                }
+                const student = locateStudent(ic, name);
+                if (!student) {
+                    setStudentError('No matching record found.');
+                    return;
+                }
+                clearStudentError();
+                el.studentResultCard?.classList.remove('hidden');
+                renderSlip(student, 'student-slip-output');
+            }
+
+            function setStudentError(message) {
+                if (!el.studentError) return;
+                el.studentError.textContent = message;
+                el.studentError.classList.remove('hidden');
+            }
+
+            function clearStudentError() {
+                el.studentError?.classList.add('hidden');
+            }
+
+            function locateStudent(ic, nameFragment) {
+                const entries = Object.values(dataStore.students || {});
+                return entries.find(student => {
+                    const storedIC = normalizeIC(student.IC || '');
+                    const storedName = (student.Name || '').toLowerCase();
+                    return storedIC === ic && storedName.includes(nameFragment);
+                });
+            }
+
+            function normalizeIC(value) {
+                return (value || '').toString().replace(/[^\d]/g, '');
+            }
+
+            function updateAdminOverview() {
+                if (el.catalogStat) el.catalogStat.textContent = Object.keys(dataStore.catalog || {}).length;
+                if (el.studentStat) el.studentStat.textContent = Object.keys(dataStore.students || {}).length;
+            }
+
+            function setAdminStatus(type, message) {
+                if (!el.adminStatus || !el.adminStatusText || !el.adminStatusIcon) return;
+                if (!message) {
+                    el.adminStatus.classList.add('hidden');
+                    return;
+                }
+                el.adminStatus.className = STATUS_STYLES[type] || STATUS_STYLES.info;
+                el.adminStatus.classList.remove('hidden');
+                el.adminStatusText.textContent = message;
+                el.adminStatusIcon.textContent = STATUS_ICONS[type] || STATUS_ICONS.info;
+            }
+
+            function parseFile(input, preferredSheet) {
+                return new Promise((resolve, reject) => {
+                    const file = input?.files?.[0];
+                    if (!file) {
+                        reject(new Error('No file selected.'));
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = new Uint8Array(event.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            let sheetName = workbook.SheetNames[0];
+                            if (preferredSheet && workbook.SheetNames.includes(preferredSheet)) {
+                                sheetName = preferredSheet;
+                            }
+                            const sheet = workbook.Sheets[sheetName];
+                            resolve(XLSX.utils.sheet_to_json(sheet, { defval: '' }));
+                        } catch (err) {
+                            reject(err);
+                        }
+                    };
+                    reader.onerror = () => reject(new Error('Unable to read the file.'));
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            function handleHistoryImport(rows) {
+                if (!rows?.length) {
+                    setAdminStatus('error', 'Worksheet is empty.');
+                    return;
+                }
+                const groups = {};
+                const newCatalog = {};
+                let skipped = 0;
+                let processedRows = 0;
+                rows.forEach(row => {
+                    processedRows++;
+                    const id = pickField(row, FIELD_MAP.id);
+                    if (!id) {
+                        skipped++;
+                        return;
+                    }
+                    const normalizedId = String(id).trim();
+                    if (!groups[normalizedId]) {
+                        groups[normalizedId] = {
+                            ID: normalizedId,
+                            Name: pickField(row, FIELD_MAP.name) || 'Unnamed Student',
+                            IC: pickField(row, FIELD_MAP.ic) || '',
+                            Intake: pickField(row, FIELD_MAP.intake) || '',
+                            SemesterData: [],
+                            CGPA: '0.00',
+                            TotalCreditsEarned: 0
+                        };
+                    }
+                    const student = groups[normalizedId];
+                    const semVal = parseInt(pickField(row, FIELD_MAP.semester)) || 1;
+                    let semObj = student.SemesterData.find(item => item.Semester === semVal);
+                    if (!semObj) {
+                        semObj = { Semester: semVal, SessionLabel: pickField(row, FIELD_MAP.session) || '', Courses: [], GPA: '0.00', TotalCreditsAttempted: 0, TotalCreditsEarned: 0, TotalPoints: 0 };
+                        student.SemesterData.push(semObj);
+                    }
+                    const code = pickField(row, FIELD_MAP.courseCode) || `CRS-${semObj.Courses.length + 1}`;
+                    const credits = parseFloat(pickField(row, FIELD_MAP.credits)) || 0;
+                    const title = pickField(row, FIELD_MAP.courseTitle) || code;
+                    const mark = pickField(row, FIELD_MAP.mark);
+                    const manualLetter = pickField(row, FIELD_MAP.gradeLetter) || '';
+                    const grade = mark !== null && mark !== '' ? calculateGrade(mark) : { Letter: manualLetter, Point: 0 };
+                    const gradePointsField = parseFloat(pickField(row, FIELD_MAP.gradePoints));
+                    const gradePoints = Number.isFinite(gradePointsField) ? gradePointsField : grade.Point * credits;
+                    const attemptedField = parseFloat(pickField(row, FIELD_MAP.creditsAttempted));
+                    const earnedField = parseFloat(pickField(row, FIELD_MAP.creditsEarned));
+                    const creditsAttempted = Number.isFinite(attemptedField) ? attemptedField : credits;
+                    const creditsEarned = Number.isFinite(earnedField) ? earnedField : (grade.Point > 0 ? credits : 0);
+                    semObj.Courses.push({
+                        Code: code,
+                        Title: title,
+                        Credits: credits,
+                        Mark: mark ?? '',
+                        Letter: manualLetter || grade.Letter,
+                        GradePoints: Number.isFinite(gradePoints) ? gradePoints : 0,
+                        CreditsAttempted: creditsAttempted,
+                        CreditsEarned: creditsEarned
+                    });
+                    if (code && !newCatalog[code]) {
+                        newCatalog[code] = { Title: title, Credits: credits };
+                    }
+                });
+                Object.values(groups).forEach(student => recalcStudent(student));
+                dataStore.students = groups;
+                dataStore.catalog = newCatalog;
+                persistStore();
+                ui.table.page = 1;
+                if (el.studentSearch) el.studentSearch.value = '';
+                updateAdminOverview();
+                renderStudentTable();
+                resetSlipViews();
+                const extra = skipped ? ` Skipped ${skipped} rows without IDs.` : '';
+                setAdminStatus('success', `Imported ${Object.keys(groups).length} students from ${processedRows} rows.${extra}`);
+            }
+
+            function handleAppend(rows) {
+                if (!dataStore.session) {
+                    setAdminStatus('error', 'Set the active session before appending.');
+                    return;
+                }
+                if (!rows?.length) {
+                    setAdminStatus('error', 'Append file is empty.');
+                    return;
+                }
+                const updates = {};
+                rows.forEach(row => {
+                    const id = pickField(row, FIELD_MAP.id);
+                    const code = pickField(row, FIELD_MAP.courseCode);
+                    if (!id || !code) return;
+                    const normalizedId = String(id).trim();
+                    if (!updates[normalizedId]) updates[normalizedId] = [];
+                    updates[normalizedId].push({
+                        Code: code,
+                        Mark: pickField(row, FIELD_MAP.mark),
+                        Title: pickField(row, FIELD_MAP.courseTitle),
+                        Credits: parseFloat(pickField(row, FIELD_MAP.credits))
+                    });
+                });
+                let updated = 0;
+                let missing = 0;
+                Object.entries(updates).forEach(([id, courses]) => {
+                    const student = dataStore.students[id];
+                    if (!student) {
+                        missing++;
+                        return;
+                    }
+                    let targetSem = student.SemesterData.find(sem => sem.SessionLabel === dataStore.session);
+                    if (!targetSem) {
+                        const nextSem = student.SemesterData.length ? Math.max(...student.SemesterData.map(s => s.Semester || 0)) + 1 : 1;
+                        targetSem = { Semester: nextSem, SessionLabel: dataStore.session, Courses: [], GPA: '0.00', TotalCreditsAttempted: 0, TotalCreditsEarned: 0, TotalPoints: 0 };
+                        student.SemesterData.push(targetSem);
+                    }
+                    if (!Array.isArray(targetSem.Courses)) targetSem.Courses = [];
+                    courses.forEach(course => {
+                        const catalogEntry = dataStore.catalog[course.Code];
+                        const credits = Number.isFinite(course.Credits) ? course.Credits : (catalogEntry?.Credits ?? 3);
+                        const title = course.Title || catalogEntry?.Title || course.Code;
+                        const grade = course.Mark !== null && course.Mark !== undefined && course.Mark !== '' ? calculateGrade(course.Mark) : { Letter: '', Point: 0 };
+                        const payload = {
+                            Code: course.Code,
+                            Title: title,
+                            Credits: credits,
+                            Mark: course.Mark ?? '',
+                            Letter: grade.Letter,
+                            GradePoints: grade.Point * credits,
+                            CreditsAttempted: credits,
+                            CreditsEarned: grade.Point > 0 ? credits : 0
+                        };
+                        const idx = targetSem.Courses.findIndex(item => item.Code === course.Code);
+                        if (idx >= 0) targetSem.Courses[idx] = payload;
+                        else targetSem.Courses.push(payload);
+                        if (!dataStore.catalog[course.Code]) {
+                            dataStore.catalog[course.Code] = { Title: title, Credits: credits };
+                        }
+                    });
+                    recalcStudent(student);
+                    updated++;
+                });
+                persistStore();
+                updateAdminOverview();
+                renderStudentTable();
+                const extra = missing ? ` ${missing} IDs were not found.` : '';
+                setAdminStatus('success', `Appended marks for ${updated} students.${extra}`);
+            }
+
+            function saveSession(value) {
+                if (!value) {
+                    setAdminStatus('error', 'Enter a session label.');
+                    return;
+                }
+                dataStore.session = value;
+                persistStore();
+                if (el.setSessionInput) el.setSessionInput.value = value;
+                setAdminStatus('success', `Active session set to ${value}.`);
+            }
+            function renderStudentTable() {
+                const all = Object.values(dataStore.students || {}).sort((a, b) => a.ID.localeCompare(b.ID));
+                const keyword = ui.table.filter;
+                const filtered = keyword ? all.filter(item => item.ID.toLowerCase().includes(keyword) || (item.Name || '').toLowerCase().includes(keyword)) : all;
+                const total = filtered.length;
+                const size = ui.table.size;
+                const totalPages = total ? Math.ceil(total / size) : 1;
+                if (ui.table.page > totalPages) ui.table.page = totalPages;
+                if (ui.table.page < 1) ui.table.page = 1;
+                const start = total ? (ui.table.page - 1) * size : 0;
+                const pageItems = total ? filtered.slice(start, start + size) : [];
+                if (el.studentList) {
+                    if (!pageItems.length) {
+                        el.studentList.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:16px;">No records</td></tr>';
+                    } else {
+                        el.studentList.innerHTML = pageItems.map(student => `
+                            <tr data-student="${student.ID}" style="cursor:pointer;">
+                                <td>${student.ID}</td>
+                                <td>${student.Name || ''}</td>
+                                <td style="text-align:right; font-weight:600;">${student.CGPA || '0.00'}</td>
+                                <td style="text-align:right; color:#0ea5e9;">View</td>
+                            </tr>
+                        `).join('');
+                    }
+                }
+                if (el.paginationText) {
+                    el.paginationText.textContent = total ? `Showing ${start + 1}-${Math.min(start + size, total)} of ${total}` : 'No records';
+                }
+                if (el.prevPage) el.prevPage.disabled = ui.table.page <= 1;
+                if (el.nextPage) el.nextPage.disabled = ui.table.page >= totalPages;
+            }
+
+            function viewAdminSlip(id) {
+                const student = dataStore.students?.[id];
+                if (!student) {
+                    setAdminStatus('error', `Unable to locate student ${id}.`);
+                    return;
+                }
+                showSlipPanel();
+                renderSlip(student, 'admin-slip-output');
+            }
+
+            function renderSlip(student, mountId) {
+                if (!student) return;
+                const mount = document.getElementById(mountId);
+                const semestersHtml = buildSemesterHtml(student);
+                const sessionLabel = dataStore.session || student.SemesterData?.[0]?.SessionLabel || 'Session N/A';
+                const inner = `
+                    <div class="slip-surface">
+                        <div class="slip-header">
+                            <div class="slip-address">
+                                <strong>Innovative University College</strong><br>
+                                Centre for Digital Learning Learning<br>
+                                Unit GL35, Main Lobby Block C, <br>
+                                Kelana Square, Jalan SS 7/26, <br>
+                                47301 Petaling Jaya, Selangor, Malaysia<br>
+                                Tel: +603-2726 2436
+                            </div>
+                            <div style="text-align:right; font-size:0.85rem;">
+                                <p style="margin:0;">Generated on ${new Date().toLocaleDateString()}</p>
+                                <p style="margin:4px 0 0;">Session: <strong>${sessionLabel}</strong></p>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:6px;">
+                            <h2 style="margin:0;">Academic Record</h2>
+                            <div style="text-align:right;">
+                                <p class="eyebrow" style="margin:0;">Student ID</p>
+                                <p style="margin:0; font-size:1.1rem; font-weight:700;">${student.ID}</p>
+                            </div>
+                        </div>
+                        <div class="slip-meta">
+                            <div><strong>Name</strong>${student.Name || 'N/A'}</div>
+                            <div><strong>IC / Passport</strong>${student.IC || '-'}</div>
+                            <div><strong>Intake</strong>${student.Intake || '-'}</div>
+                            <div><strong>Total Credits Earned</strong>${student.TotalCreditsEarned || 0}</div>
+                        </div>
+                        <div style="margin-top:8px; display:flex; flex-direction:column; gap:10px;">${semestersHtml}</div>
+                        <div style="border-top:1px solid #cbd5f5; margin-top:12px; padding-top:10px; display:flex; justify-content:space-between; font-weight:600; font-size:0.95rem;">
+                            <span>CGPA: ${student.CGPA || '0.00'}</span>
+                            <span>Verified via ODL Transcript Workspace</span>
+                        </div>
+                        <p style="margin-top:8px; text-align:center; font-size:0.75rem; color:#64748b;">Computer generated document. No signature required.</p>
+                    </div>`;
+                if (mount) mount.innerHTML = inner;
+                if (el.printableSlip) el.printableSlip.innerHTML = inner;
+            }
+
+            function buildSemesterHtml(student) {
+                const semesters = (student.SemesterData || []).slice().sort((a, b) => a.Semester - b.Semester);
+                if (!semesters.length) {
+                    return '<p style="text-align:center; color:#94a3b8;">No academic activity recorded.</p>';
+                }
+                return semesters.map(sem => {
+                    const rows = (sem.Courses || []).map(course => `
+                        <tr>
+                            <td>${course.Code || '-'}</td>
+                            <td>${course.Title || '-'}</td>
+                            <td>${course.Mark ?? '-'}</td>
+                            <td>${course.Letter || '-'}</td>
+                            <td>${formatDecimal(course.Credits)}</td>
+                            <td>${formatDecimal(course.GradePoints)}</td>
+                        </tr>
+                    `).join('') || '<tr><td colspan="6" style="text-align:center; padding:8px; color:#94a3b8;">No courses for this semester.</td></tr>';
+                    return `
+                        <div class="slip-semester">
+                            <div class="slip-semester-title">
+                                <span>Semester ${sem.Semester}${sem.SessionLabel ? ` · ${sem.SessionLabel}` : ''}</span>
+                                <span>GPA ${sem.GPA || '0.00'}</span>
+                            </div>
+                            <table class="slip-table">
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th style="width:55%;">Course</th>
+                                        <th>Mark</th>
+                                        <th>Grade</th>
+                                        <th>Credits</th>
+                                        <th>Points</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                            <div class="slip-semester-summary">
+                                Credits Earned: ${formatDecimal(sem.TotalCreditsEarned)} · Points: ${formatDecimal(sem.TotalPoints)}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            function formatDecimal(value) {
+                const num = parseFloat(value);
+                if (Number.isFinite(num)) {
+                    return num % 1 === 0 ? num.toString() : num.toFixed(2);
+                }
+                return '0';
+            }
+
+            function showDirectoryPanel() {
+                el.adminDirectoryCard?.classList.remove('hidden');
+                el.adminSlipCard?.classList.add('hidden');
+                if (el.adminSlipOutput) {
+                    el.adminSlipOutput.innerHTML = '<div class="slip-surface"><p class="muted" style="text-align:center;">Select a student from the directory to view the transcript.</p></div>';
+                }
+                if (el.printableSlip) el.printableSlip.innerHTML = '';
+            }
+
+            function showSlipPanel() {
+                el.adminDirectoryCard?.classList.add('hidden');
+                el.adminSlipCard?.classList.remove('hidden');
+            }
+
+            function resetSlipViews() {
+                if (el.studentSlip) {
+                    el.studentSlip.innerHTML = '<div class="slip-surface"><p class="muted" style="text-align:center;">Search for a record to preview the transcript.</p></div>';
+                }
+                showDirectoryPanel();
+                el.studentResultCard?.classList.add('hidden');
+                if (el.printableSlip) el.printableSlip.innerHTML = '';
+            }
+
+            function recalcStudent(student) {
+                if (!student || !Array.isArray(student.SemesterData)) return;
+                student.SemesterData.sort((a, b) => a.Semester - b.Semester);
+                let cumPoints = 0;
+                let cumAttempted = 0;
+                let cumEarned = 0;
+                student.SemesterData.forEach(sem => {
+                    let semPoints = 0;
+                    let semAttempted = 0;
+                    let semEarned = 0;
+                    (sem.Courses || []).forEach(course => {
+                        semPoints += Number(course.GradePoints) || 0;
+                        semAttempted += Number(course.CreditsAttempted) || 0;
+                        semEarned += Number(course.CreditsEarned) || 0;
+                    });
+                    sem.TotalPoints = semPoints;
+                    sem.TotalCreditsAttempted = semAttempted;
+                    sem.TotalCreditsEarned = semEarned;
+                    sem.GPA = semAttempted > 0 ? (semPoints / semAttempted).toFixed(2) : '0.00';
+                    cumPoints += semPoints;
+                    cumAttempted += semAttempted;
+                    cumEarned += semEarned;
+                });
+                student.CGPA = cumAttempted > 0 ? (cumPoints / cumAttempted).toFixed(2) : '0.00';
+                student.TotalCreditsEarned = cumEarned;
+            }
+
+            function calculateGrade(mark) {
+                const value = parseFloat(mark);
+                if (Number.isNaN(value)) return { Letter: 'N/A', Point: 0 };
+                if (value >= 80) return { Letter: 'A', Point: 4.0 };
+                if (value >= 75) return { Letter: 'A-', Point: 3.67 };
+                if (value >= 70) return { Letter: 'B+', Point: 3.33 };
+                if (value >= 65) return { Letter: 'B', Point: 3.0 };
+                if (value >= 60) return { Letter: 'B-', Point: 2.67 };
+                if (value >= 55) return { Letter: 'C+', Point: 2.33 };
+                if (value >= 50) return { Letter: 'C', Point: 2.0 };
+                if (value >= 45) return { Letter: 'D+', Point: 1.67 };
+                if (value >= 40) return { Letter: 'D', Point: 1.33 };
+                return { Letter: 'F', Point: 0 };
+            }
+
+            function pickField(row, candidates) {
+                if (!row || !candidates) return null;
+                for (const key of candidates) {
+                    if (row[key] !== undefined && row[key] !== null) {
+                        const val = row[key];
+                        if (typeof val === 'string') {
+                            const trimmed = val.trim();
+                            if (trimmed !== '') return trimmed;
+                        } else if (val !== '') {
+                            return val;
+                        }
+                    }
+                }
+                return null;
+            }
+        });
+    </script>
+</body>
+</html>
