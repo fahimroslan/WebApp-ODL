@@ -24,3 +24,6 @@ export const listStudentProfiles = wrap(provider.listStudentProfiles || (() => [
 export const listCourseCatalog = wrap(provider.listCourseCatalog || (() => []));
 export const importHistory = wrap(provider.importHistory || (() => ({})));
 export const appendResults = wrap(provider.appendResults || (() => ({})));
+export const listReportRows = wrap(provider.listReportRows || (() => []));
+export const importStudentProfiles = wrap(provider.importStudentProfiles || (() => ({})));
+export const updateCourseCatalogEntry = wrap(provider.updateCourseCatalogEntry || (() => ({})));

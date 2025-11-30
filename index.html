@@ -14,9 +14,9 @@
 <body>
     <div class="shell">
         <header>
-            <div class="eyebrow">Open & Distance Learning</div>
-            <h1>ODL Transcript Workspace</h1>
-            <p>Upload transcript data once, let students and staff retrieve polished slips anytime.</p>
+            <div class="eyebrow">Centre of Distance Learning</div>
+            <h1>ODL Data Management</h1>
+            <p class="muted" style="font-size:1rem; margin-top:6px;">Innovative University College</p>
         </header>
         <div class="tabs">
             <button class="tab-button active" data-tab="student-tab">Student Access</button>
@@ -92,11 +92,30 @@
                             </div>
                         </div>
                     </div>
+                    <div class="card" id="admin-report-card">
+                        <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                            <div>
+                                <p class="eyebrow" style="margin-bottom:4px;">Report export</p>
+                                <h3 style="margin:0;">Download marks snapshot</h3>
+                                <p class="muted" style="margin:4px 0 0;">Each row equals one course mark saved locally.</p>
+                            </div>
+                            <div style="text-align:right;">
+                                <p class="muted" style="margin:0;">Rows available</p>
+                                <p style="margin:0; font-size:1.2rem; font-weight:600;" id="reportCount">0</p>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+                            <button type="button" id="reportRefreshBtn" class="secondary-btn">Refresh</button>
+                            <button type="button" id="reportExportBtn" class="primary-btn">Export CSV</button>
+                        </div>
+                        <p id="reportStatus" class="status info hidden" style="margin-top:12px;">Loading report...</p>
+                    </div>
                     <div class="card">
                         <div class="sub-tabs">
                             <button class="sub-tab active" data-section="admin-session">Session Setting</button>
                             <button class="sub-tab" data-section="admin-upload">Upload History & Append Marks</button>
                             <button class="sub-tab" data-section="admin-directory">Student Directory</button>
+                            <button class="sub-tab" data-section="admin-courses">Course Catalog</button>
                         </div>
                         <div id="admin-session" class="sub-section active">
                             <h3>Session setting</h3>
@@ -132,69 +151,129 @@
                                         </ul>
                                         <p style="margin-bottom:0;">Only include finalised grades. Duplicate IDs overwrite previous history.</p>
                                     </div>
-                                    <div class="file-input" style="margin-top:12px; align-items:flex-start;">
-                                        <input type="file" id="historyFile" accept=".xlsx,.csv" style="width:100%;">
-                                        <button id="processHistoryBtn" class="primary-btn" style="align-self:flex-start;">Import history</button>
+                                    <div class="upload-control" style="margin-top:12px;">
+                                        <div class="file-control">
+                                            <input type="file" id="historyFile" accept=".xlsx,.csv" class="visually-hidden">
+                                            <label for="historyFile" class="file-trigger">Choose file</label>
+                                            <span id="historyFileName" class="file-name">No file selected</span>
+                                        </div>
+                                        <button id="processHistoryBtn" class="primary-btn">Import history</button>
                                     </div>
                                 </div>
                                 <div>
                                     <h4>Append marks</h4>
                                     <div class="muted" style="font-size:0.9rem;">
-                                        <p style="margin-bottom:8px;">Use a simple CSV/XLSX with these required columns (for both existing and new students):</p>
+                                        <p style="margin-bottom:8px;">Set the course below, then upload a .xlsx containing each student's <strong>Name</strong> and <strong>Mark</strong>.</p>
                                         <ul style="margin:0 0 8px 18px; padding:0; list-style:disc;">
-                                            <li>ID (matric number)</li>
-                                            <li>Name</li>
-                                            <li>IC</li>
-                                            <li>Intake</li>
-                                            <li>CourseCode (must match catalog)</li>
-                                            <li>Mark (numeric) or Letter</li>
+                                            <li>Course applies to the currently active session.</li>
+                                            <li>Student profiles must exist first (import history or add students).</li>
+                                            <li>Duplicate names in the upload are skipped.</li>
                                         </ul>
-                                        <p style="margin:0 0 4px 0;">Optional columns: Title, Credits override, SessionLabel (overrides active session).</p>
-                                        <p style="margin-bottom:0;">Rows missing any required field are skipped. Keep the schema uniform for every row so future students can be created automatically.</p>
+                                        <p style="margin:0 0 4px 0;">Course code and title must be in uppercase (e.g., <code>MTH101</code>, <code>MATHEMATICS I</code>). Set the credit hours so GPA math stays accurate.</p>
+                                        <p style="margin:0 0 4px 0;">Rows without a matching student or mark are skipped automatically.</p>
+                                        <p style="margin:0;">Optional columns: <strong>ID</strong> or <strong>IC</strong> improve matching for students with similar names.</p>
                                     </div>
-                                    <div class="file-input" style="margin-top:12px; align-items:flex-start;">
-                                        <input type="file" id="appendFile" accept=".xlsx,.csv" style="width:100%;">
-                                        <button id="appendMarksBtn" class="primary-btn" style="align-self:flex-start;">Append marks</button>
+                                    <div style="margin-top:12px; display:flex; flex-direction:column; gap:12px;">
+                                        <div class="input-grid">
+                                            <div class="input-cell">
+                                                <label for="appendCourseCode">Course code</label>
+                                                <input type="text" id="appendCourseCode" placeholder="e.g., MTH101" style="text-transform:uppercase;">
+                                            </div>
+                                            <div class="input-cell">
+                                                <label for="appendCourseTitle">Course title</label>
+                                                <input type="text" id="appendCourseTitle" placeholder="e.g., MATHEMATICS I" style="text-transform:uppercase;">
+                                            </div>
+                                            <div class="input-cell narrow">
+                                                <label for="appendCourseCredits">Credits</label>
+                                                <div class="credit-field">
+                                                    <input type="number" id="appendCourseCredits" placeholder="3" min="0" step="0.5">
+                                                    <span>CH</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="upload-control">
+                                            <div class="file-control">
+                                                <input type="file" id="appendFile" accept=".xlsx,.csv" class="visually-hidden">
+                                                <label for="appendFile" class="file-trigger">Choose file</label>
+                                                <span id="appendFileName" class="file-name">No file selected</span>
+                                            </div>
+                                            <button id="appendMarksBtn" class="primary-btn">Append marks</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div id="admin-directory" class="sub-section">
                             <div id="admin-directory-card">
-                                <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
-                                    <div>
-                                        <h3>Student directory</h3>
-                                        <p class="muted">Search by matric ID or name</p>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                                    <button type="button" class="directory-tab active" data-panel="list">Student Directory</button>
+                                    <button type="button" class="directory-tab" data-panel="upload">Add Students</button>
+                                </div>
+                                <div id="directory-list-panel" class="directory-panel">
+                                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
+                                        <div>
+                                            <h3>Student directory</h3>
+                                            <p class="muted">Search by matric ID or name</p>
+                                        </div>
+                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                            <select id="intakeFilter" style="padding:10px 12px; border-radius:10px; border:1px solid #cbd5f5;">
+                                                <option value="">All intakes</option>
+                                            </select>
+                                            <input type="search" id="studentSearch" placeholder="Search..." style="max-width:240px;">
+                                        </div>
                                     </div>
-                                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                        <select id="intakeFilter" style="padding:10px 12px; border-radius:10px; border:1px solid #cbd5f5;">
-                                            <option value="">All intakes</option>
-                                        </select>
-                                        <input type="search" id="studentSearch" placeholder="Search..." style="max-width:240px;">
+                                    <div class="table-wrapper" style="margin-top:12px;">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Name</th>
+                                                    <th>Intake</th>
+                                                    <th style="text-align:right;">CGPA</th>
+                                                    <th style="text-align:right;">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="studentList">
+                                                <tr><td colspan="5" style="text-align:center; padding:16px;">No data</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="pagination">
+                                        <button id="prevPage">Prev</button>
+                                        <p id="paginationText">No data</p>
+                                        <button id="nextPage">Next</button>
                                     </div>
                                 </div>
-                                <div class="table-wrapper" style="margin-top:12px;">
-                                    <table>
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Name</th>
-                                            <th>Intake</th>
-                                            <th style="text-align:right;">CGPA</th>
-                                            <th style="text-align:right;">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="studentList">
-                                        <tr><td colspan="5" style="text-align:center; padding:16px;">No data</td></tr>
-                                    </tbody>
-                                </table>
+                                <div id="directory-upload-panel" class="directory-panel hidden">
+                                    <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                                        <div style="flex:1; min-width:240px;">
+                                            <h3>Add new student profiles</h3>
+                                            <p class="muted" style="margin-bottom:12px;">
+                                                Upload a .xlsx file with columns <strong>ID</strong>, <strong>Name</strong>, and <strong>IC</strong>. Set the intake semester first (format <code>mm-yyyy</code>).
+                                                Newly created profiles have no marks until future append uploads match their ID.
+                                            </p>
+                                            <ul style="margin:0 0 12px 18px; padding:0; color:#475569;">
+                                                <li>Rows missing any required column are skipped.</li>
+                                                <li>Existing students keep their history; missing meta fields are filled in.</li>
+                                            </ul>
+                                        </div>
+                                        <div style="flex:1; min-width:260px;">
+                                            <label for="addStudentIntakeInput">Intake semester (mm-yyyy)</label>
+                                            <input type="text" id="addStudentIntakeInput" placeholder="e.g., 09-2025" style="margin-bottom:12px;">
+                                            <label>Upload .xlsx</label>
+                                            <div class="upload-control">
+                                                <div class="file-control">
+                                                    <input type="file" id="addStudentFile" accept=".xlsx" class="visually-hidden">
+                                                    <label for="addStudentFile" class="file-trigger">Choose file</label>
+                                                    <span id="addStudentFileName" class="file-name">No file selected</span>
+                                                </div>
+                                                <button type="button" id="addStudentUploadBtn" class="primary-btn">Upload profiles</button>
+                                            </div>
+                                            <p id="addStudentStatus" class="status info hidden" style="margin-top:12px;">Preparing upload...</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="pagination">
-                                <button id="prevPage">Prev</button>
-                                <p id="paginationText">No data</p>
-                                <button id="nextPage">Next</button>
-                            </div>
-                        </div>
                         <div id="admin-detail-card" class="hidden">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
                                 <div>
@@ -220,6 +299,68 @@
                     </div>
                 </div>
             </div>
+                        <div id="admin-courses" class="sub-section">
+                            <div class="stack">
+                                <div class="card">
+                                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                                        <div>
+                                            <h3>Course catalog</h3>
+                                            <p class="muted" style="margin:4px 0 0;">Review and edit codes, titles, and credits in one place.</p>
+                                        </div>
+                                        <div style="text-align:right;">
+                                            <p class="muted" style="margin:0;">Courses tracked</p>
+                                            <p style="margin:0; font-size:1.2rem; font-weight:600;" id="courseCount">0</p>
+                                        </div>
+                                    </div>
+                                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">
+                                        <button type="button" id="courseRefreshBtn" class="secondary-btn">Refresh</button>
+                                    </div>
+                                    <p id="courseStatus" class="status info hidden" style="margin-top:12px;">Loading catalog...</p>
+                                    <div class="table-wrapper" style="margin-top:16px;">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Code</th>
+                                                    <th style="width:45%;">Course title</th>
+                                                    <th>Credits</th>
+                                                    <th>Enrolled</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="courseListBody">
+                                                <tr><td colspan="4" style="text-align:center; padding:16px;">No courses available.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="card">
+                                    <h3>Edit course details</h3>
+                                    <p class="muted" style="margin-bottom:12px;">Select a course from the table to modify the title or credit hour. Changes immediately recalculate every student's GPA/CGPA.</p>
+                                    <form id="courseEditForm" class="stack">
+                                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                                            <div style="flex:1; min-width:140px;">
+                                                <label for="courseEditCode">Course code</label>
+                                                <input type="text" id="courseEditCode" readonly placeholder="Select from table">
+                                            </div>
+                                            <div style="flex:2; min-width:200px;">
+                                                <label for="courseEditTitle">Course title</label>
+                                                <input type="text" id="courseEditTitle" placeholder="Enter title in uppercase" style="text-transform:uppercase;">
+                                            </div>
+                                            <div style="width:160px;">
+                                                <label for="courseEditCredits">Credits</label>
+                                                <div class="credit-field">
+                                                    <input type="number" id="courseEditCredits" placeholder="3" min="0" step="0.5">
+                                                    <span>CH</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                            <button type="submit" id="courseSaveBtn" class="primary-btn" disabled>Save changes</button>
+                                            <button type="button" id="courseClearBtn" class="secondary-btn">Clear</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
         </section>
     </div>
     <div id="printable-slip"></div>

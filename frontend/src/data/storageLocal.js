@@ -1,7 +1,7 @@
 import { STORAGE_KEY, FIELD_MAP } from '../config.js';
 import { createDefaultStore, createStudentRecord, createSemesterRecord } from '../domain/models.js';
 import { calculateGrade, recalculateStudent, deriveCreditsEarned, deriveGradePoints, pointFromLetter } from '../services/transcriptService.js';
-import { normalizeIC, isNonEmpty } from '../utils/validators.js';
+import { normalizeIC, isNonEmpty, normalizeName } from '../utils/validators.js';
 
 let store = hydrate();
 
@@ -190,109 +190,89 @@ export function importHistory(rows = []) {
     };
 }
 
-export function appendResults(rows = []) {
+export function appendResults(rows = [], options = {}) {
     if (!store.session) {
         throw new Error('Set the active session before appending.');
     }
     if (!rows.length) {
         throw new Error('Append file is empty.');
     }
-    const updates = {};
-    rows.forEach(row => {
-        const id = pickField(row, FIELD_MAP.id);
-        const code = pickField(row, FIELD_MAP.courseCode);
-        if (!id || !code) return;
-        const normalizedId = String(id).trim();
-        const name = pickField(row, FIELD_MAP.name);
-        const ic = pickField(row, FIELD_MAP.ic);
-        const intake = pickField(row, FIELD_MAP.intake);
-        if (!updates[normalizedId]) {
-            updates[normalizedId] = {
-                meta: { name, ic, intake },
-                courses: []
-            };
-        } else {
-            const meta = updates[normalizedId].meta;
-            if (!meta.name && name) meta.name = name;
-            if (!meta.ic && ic) meta.ic = ic;
-            if (!meta.intake && intake) meta.intake = intake;
+    const courseCode = (options.courseCode || '').trim().toUpperCase();
+    const courseTitle = (options.courseTitle || '').trim().toUpperCase();
+    const providedCreditsRaw = parseFloat(options.credits);
+    const creditsOverride = Number.isFinite(providedCreditsRaw) && providedCreditsRaw > 0 ? providedCreditsRaw : null;
+    if (!courseCode || !courseTitle) {
+        throw new Error('Set course code and title before uploading marks.');
+    }
+    const nameIndex = buildNameIndex();
+    const resolvedCredits = creditsOverride ?? determineCatalogCredits(courseCode);
+    if (!store.catalog[courseCode]) {
+        store.catalog[courseCode] = { Title: courseTitle, Credits: resolvedCredits };
+    } else {
+        store.catalog[courseCode].Title = courseTitle;
+        if (Number.isFinite(resolvedCredits)) {
+            store.catalog[courseCode].Credits = resolvedCredits;
         }
-        updates[normalizedId].courses.push({
-            code,
-            mark: pickField(row, FIELD_MAP.mark),
-            letter: pickField(row, FIELD_MAP.gradeLetter),
-            title: pickField(row, FIELD_MAP.courseTitle),
-            credits: parseFloat(pickField(row, FIELD_MAP.credits)),
-            sessionLabel: pickField(row, FIELD_MAP.session)
-        });
-    });
+    }
     let updated = 0;
-    let created = 0;
     let skipped = 0;
-    Object.entries(updates).forEach(([id, payload]) => {
-        let student = store.students[id];
-        if (!student) {
-            const hasMeta = isNonEmpty(payload.meta.name) && isNonEmpty(payload.meta.ic) && isNonEmpty(payload.meta.intake);
-            if (!hasMeta) {
-                skipped += payload.courses.length;
-                return;
-            }
-            student = createStudentRecord({
-                id,
-                name: payload.meta.name,
-                ic: payload.meta.ic,
-                intake: payload.meta.intake
-            });
-            store.students[id] = student;
-            if (!store.recent) store.recent = {};
-            store.recent[id] = true;
-            created += 1;
+    rows.forEach(row => {
+        const mark = pickField(row, FIELD_MAP.mark);
+        if (mark === null || mark === undefined || mark === '') {
+            skipped += 1;
+            return;
         }
-        payload.courses.forEach(course => {
-            const targetSession = course.sessionLabel || store.session;
-            if (!targetSession) {
+        const idValue = pickField(row, FIELD_MAP.id);
+        let student = null;
+        if (idValue) {
+            const normalizedId = String(idValue).trim();
+            student = store.students[normalizedId] || null;
+        }
+        if (!student) {
+            const nameRaw = pickField(row, FIELD_MAP.name);
+            const normalizedName = normalizeName(nameRaw);
+            if (!normalizedName) {
                 skipped += 1;
                 return;
             }
-            let semester = student.SemesterData.find(item => item.SessionLabel === targetSession);
-            if (!semester) {
-                const nextSem = student.SemesterData.length ? Math.max(...student.SemesterData.map(s => s.Semester || 0)) + 1 : 1;
-                semester = createSemesterRecord(nextSem, targetSession);
-                student.SemesterData.push(semester);
+            let matches = nameIndex[normalizedName] || [];
+            if (matches.length > 1) {
+                const icRaw = pickField(row, FIELD_MAP.ic);
+                const normalizedIC = normalizeIC(icRaw);
+                if (normalizedIC) {
+                    matches = matches.filter(item => normalizeIC(item.IC) === normalizedIC);
+                }
             }
-            if (!Array.isArray(semester.Courses)) semester.Courses = [];
-            const catalogEntry = store.catalog[course.code];
-            const credits = Number.isFinite(course.credits) ? course.credits : (catalogEntry?.Credits ?? 3);
-            const title = course.title || catalogEntry?.Title || course.code;
-            const grade = course.mark !== null && course.mark !== undefined && course.mark !== '' ? calculateGrade(course.mark) : {
-                Letter: course.letter || '',
-                Point: pointFromLetter(course.letter)
-            };
-            const payloadCourse = {
-                Code: course.code,
-                Title: title,
-                Credits: credits,
-                Mark: course.mark ?? '',
-                Letter: grade.Letter,
-                GradePoints: deriveGradePoints(grade.Point, credits),
-                CreditsAttempted: credits,
-                CreditsEarned: deriveCreditsEarned(grade.Point, credits)
-            };
-            const existingIndex = semester.Courses.findIndex(item => item.Code === course.code);
-            if (existingIndex >= 0) {
-                semester.Courses[existingIndex] = payloadCourse;
-            } else {
-                semester.Courses.push(payloadCourse);
+            if (matches.length !== 1) {
+                skipped += 1;
+                return;
             }
-            if (!store.catalog[course.code]) {
-                store.catalog[course.code] = { Title: title, Credits: credits };
-            }
-        });
+            student = matches[0];
+        }
+        const semester = resolveSemester(student, store.session);
+        const grade = calculateGrade(mark);
+        const credits = Number.isFinite(resolvedCredits) ? resolvedCredits : 0;
+        const payloadCourse = {
+            Code: courseCode,
+            Title: courseTitle,
+            Credits: credits,
+            Mark: mark,
+            Letter: grade.Letter,
+            GradePoints: deriveGradePoints(grade.Point, credits),
+            CreditsAttempted: credits,
+            CreditsEarned: deriveCreditsEarned(grade.Point, credits)
+        };
+        const existingIndex = semester.Courses.findIndex(item => item.Code === courseCode);
+        if (existingIndex >= 0) {
+            semester.Courses[existingIndex] = payloadCourse;
+        } else {
+            semester.Courses.push(payloadCourse);
+        }
         recalculateStudent(student);
         updated += 1;
     });
     persist();
-    return { updated, created, skipped };
+    return { updated, skipped };
 }
 
 function hydrate() {
@@ -367,4 +347,185 @@ function rebuildCatalogIndex() {
         Enrolled: courseCounts[code]?.size || 0
     })).sort((a, b) => a.Code.localeCompare(b.Code));
     return store.catalogIndex;
+}
+
+export function updateCourseCatalogEntry(code, { title, credits } = {}) {
+    const normalizedCode = (code || '').toString().trim().toUpperCase();
+    if (!normalizedCode) {
+        throw new Error('Select a course code before saving.');
+    }
+    const normalizedTitle = (title || '').toString().trim();
+    const creditValue = parseFloat(credits);
+    if (!Number.isFinite(creditValue) || creditValue <= 0) {
+        throw new Error('Enter a valid credit hour greater than zero.');
+    }
+    if (!store.catalog[normalizedCode]) {
+        store.catalog[normalizedCode] = { Title: normalizedTitle || normalizedCode, Credits: creditValue };
+    } else {
+        if (normalizedTitle) {
+            store.catalog[normalizedCode].Title = normalizedTitle;
+        }
+        store.catalog[normalizedCode].Credits = creditValue;
+    }
+    const updatedStudents = new Set();
+    Object.values(store.students || {}).forEach(student => {
+        let changed = false;
+        (student.SemesterData || []).forEach(semester => {
+            (semester.Courses || []).forEach(course => {
+                if (!course || (course.Code || '').toUpperCase() !== normalizedCode) return;
+                if (normalizedTitle) {
+                    course.Title = normalizedTitle;
+                }
+                course.Credits = creditValue;
+                course.CreditsAttempted = creditValue;
+                const grade = deriveCourseGrade(course);
+                course.GradePoints = deriveGradePoints(grade.Point, creditValue);
+                course.CreditsEarned = deriveCreditsEarned(grade.Point, creditValue);
+                changed = true;
+            });
+        });
+        if (changed) {
+            recalculateStudent(student);
+            updatedStudents.add(student.ID);
+        }
+    });
+    persist();
+    return { updated: updatedStudents.size };
+}
+
+function deriveCourseGrade(course) {
+    if (course && course.Mark !== null && course.Mark !== undefined && course.Mark !== '') {
+        return calculateGrade(course.Mark);
+    }
+    const letter = (course?.Letter || '').toString().trim();
+    return {
+        Letter: letter || 'N/A',
+        Point: pointFromLetter(letter)
+    };
+}
+
+function buildNameIndex() {
+    const index = {};
+    Object.values(store.students || {}).forEach(student => {
+        const key = normalizeName(student.Name);
+        if (!key) return;
+        if (!index[key]) index[key] = [];
+        index[key].push(student);
+    });
+    return index;
+}
+
+function resolveSemester(student, sessionLabel) {
+    let semester = student.SemesterData.find(item => item.SessionLabel === sessionLabel);
+    if (!semester) {
+        const nextSem = student.SemesterData.length ? Math.max(...student.SemesterData.map(s => s.Semester || 0)) + 1 : 1;
+        semester = createSemesterRecord(nextSem, sessionLabel);
+        student.SemesterData.push(semester);
+    }
+    if (!Array.isArray(semester.Courses)) semester.Courses = [];
+    return semester;
+}
+
+function determineCatalogCredits(code) {
+    const catalogEntry = store.catalog[code];
+    if (catalogEntry) {
+        const storedCredits = parseFloat(catalogEntry.Credits);
+        if (Number.isFinite(storedCredits)) {
+            return storedCredits;
+        }
+    }
+    for (const student of Object.values(store.students || {})) {
+        for (const semester of student.SemesterData || []) {
+            for (const course of semester.Courses || []) {
+                if ((course?.Code || '').toUpperCase() === code) {
+                    const credits = parseFloat(course.Credits);
+                    if (Number.isFinite(credits)) {
+                        return credits;
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+export function importStudentProfiles(rows = [], intakeLabel = '') {
+    if (!intakeLabel) {
+        throw new Error('Provide an intake label before uploading.');
+    }
+    if (!rows.length) {
+        throw new Error('Upload file is empty.');
+    }
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+    rows.forEach(row => {
+        const id = pickField(row, FIELD_MAP.id);
+        const name = pickField(row, FIELD_MAP.name);
+        const ic = pickField(row, FIELD_MAP.ic);
+        if (!id || !name || !ic) {
+            skipped += 1;
+            return;
+        }
+        const normalizedId = String(id).trim();
+        let student = store.students[normalizedId];
+        if (student) {
+            const before = JSON.stringify({ Name: student.Name, IC: student.IC, Intake: student.Intake });
+            if (!student.Name && name) {
+                student.Name = name;
+            }
+            if (!student.IC && ic) {
+                student.IC = ic;
+            }
+            if (!student.Intake && intakeLabel) {
+                student.Intake = intakeLabel;
+            }
+            const after = JSON.stringify({ Name: student.Name, IC: student.IC, Intake: student.Intake });
+            if (before !== after) {
+                updated += 1;
+            }
+        } else {
+            student = createStudentRecord({
+                id: normalizedId,
+                name,
+                ic,
+                intake: intakeLabel
+            });
+            store.students[normalizedId] = student;
+            if (!store.recent) store.recent = {};
+            store.recent[normalizedId] = true;
+            created += 1;
+        }
+    });
+    persist();
+    return { created, updated, skipped };
+}
+
+export function listReportRows() {
+    const rows = [];
+    Object.values(store.students || {}).forEach(student => {
+        (student.SemesterData || []).forEach(semester => {
+            (semester.Courses || []).forEach(course => {
+                rows.push({
+                    ID: student.ID,
+                    Name: student.Name || '',
+                    IC: student.IC || '',
+                    CourseCode: course?.Code || '',
+                    CourseTitle: course?.Title || '',
+                    Mark: course?.Mark ?? course?.Letter ?? '',
+                    SemesterTaken: buildSemesterLabel(semester)
+                });
+            });
+        });
+    });
+    return rows;
+}
+
+function buildSemesterLabel(semester) {
+    if (!semester) return '';
+    const base = Number.isFinite(semester.Semester) ? `Semester ${semester.Semester}` : '';
+    if (base && semester.SessionLabel) {
+        return `${base} / ${semester.SessionLabel}`;
+    }
+    return semester.SessionLabel || base || '';
 }

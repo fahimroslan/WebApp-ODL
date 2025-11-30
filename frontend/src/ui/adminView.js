@@ -5,6 +5,7 @@ import {
     getStats,
     getStudentTranscript,
     importHistory,
+    importStudentProfiles,
     listStudentProfiles,
     listStudents,
     setSession
@@ -30,9 +31,14 @@ export function initAdminView({ slipView }) {
     const sessionInput = qs('#setSessionInput');
     const saveSessionBtn = qs('#saveSessionBtn');
     const historyFile = qs('#historyFile');
+    const historyFileName = qs('#historyFileName');
     const historyBtn = qs('#processHistoryBtn');
     const appendFile = qs('#appendFile');
+    const appendFileName = qs('#appendFileName');
     const appendBtn = qs('#appendMarksBtn');
+    const appendCourseCodeInput = qs('#appendCourseCode');
+    const appendCourseTitleInput = qs('#appendCourseTitle');
+    const appendCourseCreditsInput = qs('#appendCourseCredits');
     const directoryCard = qs('#admin-directory-card');
     const detailCard = qs('#admin-detail-card');
     const backBtn = qs('#backToDirectoryBtn');
@@ -47,6 +53,14 @@ export function initAdminView({ slipView }) {
     const intakeSelect = qs('#intakeFilter');
     const detailTabButtons = qsa('.detail-tab');
     const detailPanels = qsa('.detail-panel');
+    const directoryTabs = qsa('.directory-tab');
+    const directoryListPanel = qs('#directory-list-panel');
+    const directoryUploadPanel = qs('#directory-upload-panel');
+    const addStudentIntakeInput = qs('#addStudentIntakeInput');
+    const addStudentFile = qs('#addStudentFile');
+    const addStudentFileName = qs('#addStudentFileName');
+    const addStudentUploadBtn = qs('#addStudentUploadBtn');
+    const addStudentStatus = qs('#addStudentStatus');
 
     const tableView = initTableView({
         onFilter: handleFilterChange,
@@ -58,7 +72,8 @@ export function initAdminView({ slipView }) {
     const state = {
         loggedIn: false,
         table: { page: 1, size: DEFAULT_PAGE_SIZE, filter: '', intake: '' },
-        detailTab: 'overview'
+        detailTab: 'overview',
+        directoryPanel: 'list'
     };
 
     initialize();
@@ -70,12 +85,21 @@ export function initAdminView({ slipView }) {
         await refreshIntakeOptions();
         await refreshTable();
         resetDetailView();
+        switchDirectoryPanel('list');
         showDirectory();
     }
 
     detailTabButtons.forEach(button => {
         on(button, 'click', () => switchDetailPanel(button.dataset.detail));
     });
+
+    directoryTabs.forEach(tab => {
+        on(tab, 'click', () => switchDirectoryPanel(tab.dataset.panel));
+    });
+
+    setupFileWatcher(historyFile, historyFileName);
+    setupFileWatcher(appendFile, appendFileName);
+    setupFileWatcher(addStudentFile, addStudentFileName);
 
     on(accessForm, 'submit', (event) => {
         event.preventDefault();
@@ -126,6 +150,7 @@ export function initAdminView({ slipView }) {
             const rows = await parseWorkbook(historyFile, 'Joined');
             const result = await importHistory(rows);
             historyFile.value = '';
+            resetFileLabel(historyFileName);
             await refreshStats();
             await refreshIntakeOptions();
             await refreshTable();
@@ -143,17 +168,30 @@ export function initAdminView({ slipView }) {
         if (!appendFile?.files?.length) {
             return setStatus('error', 'Select a file to append.');
         }
+        const courseCode = (appendCourseCodeInput?.value || '').trim().toUpperCase();
+        const courseTitle = (appendCourseTitleInput?.value || '').trim().toUpperCase();
+        const creditsRaw = (appendCourseCreditsInput?.value || '').trim();
+        const creditsValue = parseFloat(creditsRaw);
+        if (appendCourseCodeInput) appendCourseCodeInput.value = courseCode;
+        if (appendCourseTitleInput) appendCourseTitleInput.value = courseTitle;
+        if (appendCourseCreditsInput && creditsRaw) appendCourseCreditsInput.value = creditsRaw;
+        if (!courseCode || !courseTitle) {
+            return setStatus('error', 'Set both course code and title (uppercase) before uploading.');
+        }
+        if (!Number.isFinite(creditsValue) || creditsValue <= 0) {
+            return setStatus('error', 'Enter a valid credit hour (greater than 0).');
+        }
         try {
             setStatus('info', 'Reading append file...');
             const rows = await parseWorkbook(appendFile);
-            const result = await appendResults(rows);
+            const result = await appendResults(rows, { courseCode, courseTitle, credits: creditsValue });
             appendFile.value = '';
+            resetFileLabel(appendFileName);
             await refreshStats();
             await refreshIntakeOptions();
             await refreshTable();
-            const newInfo = result.created ? ` Added ${result.created} new students.` : '';
-            const extra = result.skipped ? ` ${result.skipped} entries were skipped due to missing data.` : '';
-            setStatus('success', `Appended marks for ${result.updated} students.${newInfo}${extra}`);
+            const extra = result.skipped ? ` ${result.skipped} entries were skipped.` : '';
+            setStatus('success', `Appended marks for ${result.updated} students.${extra}`);
         } catch (error) {
             setStatus('error', error?.message || 'Unable to append marks.');
         }
@@ -166,6 +204,29 @@ export function initAdminView({ slipView }) {
     });
 
     on(printBtn, 'click', () => window.print());
+
+    on(addStudentUploadBtn, 'click', async () => {
+        const intakeValue = (addStudentIntakeInput?.value || '').trim();
+        if (!/^\d{2}-\d{4}$/.test(intakeValue)) {
+            return setAddStudentStatus('error', 'Enter intake in mm-yyyy format.');
+        }
+        if (!addStudentFile?.files?.length) {
+            return setAddStudentStatus('error', 'Select a .xlsx file to upload.');
+        }
+        try {
+            setAddStudentStatus('info', 'Reading file...');
+            const rows = await parseWorkbook(addStudentFile);
+            const result = await importStudentProfiles(rows, intakeValue);
+            addStudentFile.value = '';
+            resetFileLabel(addStudentFileName);
+            setAddStudentStatus('success', `Created ${result.created} students, updated ${result.updated}, skipped ${result.skipped}.`);
+            await refreshStats();
+            await refreshIntakeOptions();
+            await refreshTable();
+        } catch (error) {
+            setAddStudentStatus('error', error?.message || 'Unable to add students.');
+        }
+    });
 
     function showInlineError(message) {
         if (!inlineError) return;
@@ -357,6 +418,28 @@ export function initAdminView({ slipView }) {
         switchDetailPanel('overview');
     }
 
+    function switchDirectoryPanel(target) {
+        const next = target === 'upload' ? 'upload' : 'list';
+        state.directoryPanel = next;
+        directoryTabs.forEach(button => {
+            button.classList.toggle('active', button.dataset.panel === next);
+        });
+        if (directoryListPanel) {
+            if (next === 'list') {
+                show(directoryListPanel);
+            } else {
+                hide(directoryListPanel);
+            }
+        }
+        if (directoryUploadPanel) {
+            if (next === 'upload') {
+                show(directoryUploadPanel);
+            } else {
+                hide(directoryUploadPanel);
+            }
+        }
+    }
+
     function switchDetailPanel(target) {
         state.detailTab = target;
         detailTabButtons.forEach(button => {
@@ -386,5 +469,32 @@ export function initAdminView({ slipView }) {
         statusText.textContent = message;
         statusIcon.textContent = type === 'success' ? '✓' : type === 'error' ? '!' : 'i';
         show(statusBox);
+    }
+
+    function setAddStudentStatus(type, message) {
+        if (!addStudentStatus) return;
+        if (!message) {
+            hide(addStudentStatus);
+            addStudentStatus.textContent = '';
+            return;
+        }
+        addStudentStatus.className = `status ${type}`;
+        addStudentStatus.textContent = message;
+        show(addStudentStatus);
+    }
+
+    function setupFileWatcher(input, label) {
+        if (!input || !label) return;
+        on(input, 'change', () => {
+            if (input.files?.length) {
+                label.textContent = input.files[0].name;
+            } else {
+                label.textContent = 'No file selected';
+            }
+        });
+    }
+
+    function resetFileLabel(label) {
+        if (label) label.textContent = 'No file selected';
     }
 }

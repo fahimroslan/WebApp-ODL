@@ -3,6 +3,8 @@ import { initLayout } from './ui/layout.js';
 import { initAdminView } from './ui/adminView.js';
 import { initSlipView } from './ui/slipView.js';
 import { initStudentView } from './ui/studentView.js';
+import { initReportView } from './ui/reportView.js';
+import { initCourseView } from './ui/courseView.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -14,4 +16,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const slipView = initSlipView();
     initStudentView({ slipView });
     initAdminView({ slipView });
+    initReportView();
+    initCourseView();
 });
