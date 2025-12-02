@@ -1,4 +1,4 @@
-import { ADMIN_ACCESS_CODE, DEFAULT_PAGE_SIZE } from '../config.js';
+import { DEFAULT_PAGE_SIZE } from '../config.js';
 import {
     appendResults,
     getSession,
@@ -15,7 +15,7 @@ import { qs, qsa, on, show, hide, setText } from '../utils/dom.js';
 import { formatDecimal } from '../utils/format.js';
 import { initTableView } from './tableView.js';
 
-export function initAdminView({ slipView }) {
+export function initAdminView({ slipView, authView }) {
     const accessForm = qs('#adminAccessForm');
     const codeInput = qs('#adminCodeInput');
     const inlineError = qs('#admin-inline-error');
@@ -101,25 +101,40 @@ export function initAdminView({ slipView }) {
     setupFileWatcher(appendFile, appendFileName);
     setupFileWatcher(addStudentFile, addStudentFileName);
 
-    on(accessForm, 'submit', (event) => {
+    on(accessForm, 'submit', async (event) => {
         event.preventDefault();
-        const code = (codeInput?.value || '').trim();
-        if (!code) {
-            return showInlineError('Enter the access code to continue.');
+        const email = (codeInput?.value || '').trim();
+        const passwordInput = qs('#adminPasswordInput');
+        const password = (passwordInput?.value || '').trim();
+
+        if (!email || !password) {
+            return showInlineError('Enter email and password to continue.');
         }
-        if (code !== ADMIN_ACCESS_CODE) {
-            return showInlineError('Invalid access code.');
+
+        try {
+            const { user, error } = await authView.signIn?.(email, password) || {};
+            if (error) {
+                return showInlineError(error);
+            }
+
+            showInlineError('');
+            state.loggedIn = true;
+            if (accessForm) accessForm.reset();
+            hide(loginCard);
+            show(workspace);
+            setText(welcomeName, email);
+            setStatus('success', 'Connected to Supabase. You can now manage student data.');
+        } catch (error) {
+            showInlineError(error?.message || 'Authentication failed');
         }
-        showInlineError('');
-        state.loggedIn = true;
-        if (accessForm) accessForm.reset();
-        hide(loginCard);
-        show(workspace);
-        setText(welcomeName, 'Admin');
-        setStatus('info', 'You are working with local data. Import the latest worksheet when needed.');
     });
 
-    on(logoutBtn, 'click', () => {
+    on(logoutBtn, 'click', async () => {
+        try {
+            await authView.signOut?.();
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
         state.loggedIn = false;
         show(loginCard);
         hide(workspace);

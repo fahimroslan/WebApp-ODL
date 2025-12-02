@@ -1,0 +1,120 @@
+═════════════════════════════════════════════════════════════════════════════
+  ODL Transcript Workspace v2.0 - Quick Start Guide
+═════════════════════════════════════════════════════════════════════════════
+
+🚀 INSTALLATION (5 minutes)
+───────────────────────────────────────────────────────────────────────────────
+
+1. npm install
+2. npm run build
+3. Credentials already in .env file ✓
+
+📋 SETUP SUPABASE ADMIN ACCOUNT (10 minutes)
+───────────────────────────────────────────────────────────────────────────────
+
+1. Open Supabase dashboard: https://supabase.com
+2. Go to Authentication → Users
+3. Click "Add user" and create admin account:
+   Email: admin@university.edu
+   Password: (strong password 14+ chars)
+4. Copy the user ID
+5. Go to SQL Editor and run:
+   INSERT INTO user_roles (user_id, role)
+   VALUES ('[USER_ID]', 'admin');
+6. Done! Admin can now log in
+
+🔐 FIRST LOGIN
+───────────────────────────────────────────────────────────────────────────────
+
+Admin Console Tab:
+  Email: admin@university.edu
+  Password: (the password you set)
+  Click "Sign in"
+
+Student Access Tab:
+  IC Number: (any student IC in database)
+  Full Name: (matching student name)
+  Click "Retrieve transcript"
+
+📊 IMPORT DATA
+───────────────────────────────────────────────────────────────────────────────
+
+1. Prepare Excel file with columns:
+   - ID, Name, IC, Intake
+   - CourseCode, CourseTitle, Credits
+   - Mark, Semester, Session
+
+2. Admin Console → Upload History & Append Marks
+3. Choose file and click "Import history"
+4. Grades automatically calculate GPA/CGPA
+
+🌐 DEPLOY TO PRODUCTION
+───────────────────────────────────────────────────────────────────────────────
+
+Option 1: Vercel (Recommended)
+  npm install -g vercel
+  vercel --prod
+
+Option 2: Netlify
+  npm install -g netlify-cli
+  netlify deploy --prod --dir=dist
+
+Option 3: Any web server
+  npm run build
+  Upload dist/ folder to your host
+
+📚 DOCUMENTATION
+───────────────────────────────────────────────────────────────────────────────
+
+README.md                - Overview and features
+SETUP_GUIDE.md           - Detailed setup instructions
+MIGRATION_CHECKLIST.md   - Pre-launch verification
+DEPLOYMENT.md            - Hosting options
+MIGRATION_SUMMARY.md     - What changed from v1
+
+🆘 COMMON ISSUES
+───────────────────────────────────────────────────────────────────────────────
+
+Build fails?
+  → npm install (delete node_modules first if needed)
+  → npm run build
+
+Can't log in?
+  → Check email/password in Supabase dashboard
+  → Verify user has 'admin' role in user_roles table
+
+Student record not found?
+  → Import student profile first via Upload History
+  → Check IC number and name match exactly
+
+Grades not showing?
+  → Verify grades were uploaded to enrollments table
+  → Run "Refresh" button in admin panel
+
+🔐 SECURITY CHECKLIST
+───────────────────────────────────────────────────────────────────────────────
+
+□ Admin password is strong (14+ chars, mixed case, numbers, symbols)
+□ First admin account created in Supabase
+□ Admin role assigned in user_roles table
+□ HTTPS enabled (automatic on major hosting platforms)
+□ Environment variables set in production
+□ Supabase backups enabled
+□ Regular audit log reviews scheduled
+□ Student data imported and verified
+□ Course catalog populated
+
+📞 SUPPORT
+───────────────────────────────────────────────────────────────────────────────
+
+Supabase: https://supabase.com/docs
+PostgreSQL: https://www.postgresql.org/docs/
+Issues: Check console errors (F12 → Console tab)
+
+✅ READY TO LAUNCH
+───────────────────────────────────────────────────────────────────────────────
+
+Follow the checklist in MIGRATION_CHECKLIST.md before going live.
+
+Version: 2.0.0
+Last Updated: December 2024

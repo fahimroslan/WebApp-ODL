@@ -1,8 +1,6 @@
-import { USE_API_STORAGE } from '../config.js';
-import * as storageLocal from './storageLocal.js';
-import * as storageApi from './storageApi.js';
+import * as storageSupabase from './storageSupabase.js';
 
-const provider = USE_API_STORAGE ? storageApi : storageLocal;
+const provider = storageSupabase;
 
 const wrap = (fn) => (...args) => {
     try {

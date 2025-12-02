@@ -60,16 +60,20 @@
             <div class="stack">
                 <div id="admin-login-card" class="card">
                     <h2>Staff access</h2>
-                    <p class="muted">Enter the shared access code to open the console.</p>
+                    <p class="muted">Sign in with your admin account credentials.</p>
                     <form id="adminAccessForm" class="stack" style="margin-top:16px; max-width:320px;">
                         <div>
-                            <label for="adminCodeInput">Access code</label>
-                            <input type="password" id="adminCodeInput" placeholder="Enter code" required>
+                            <label for="adminCodeInput">Email address</label>
+                            <input type="email" id="adminCodeInput" placeholder="admin@example.com" required>
                         </div>
-                        <button type="submit" class="primary-btn">Unlock console</button>
+                        <div>
+                            <label for="adminPasswordInput">Password</label>
+                            <input type="password" id="adminPasswordInput" placeholder="Enter password" required>
+                        </div>
+                        <button type="submit" class="primary-btn">Sign in</button>
                         <p id="admin-inline-error" class="hidden status error"></p>
                     </form>
-                    <p class="muted" style="margin-top:12px;">Default code lives inside <code>config.js</code>. Change it before deploying.</p>
+                    <p class="muted" style="margin-top:12px;">Contact your administrator for login credentials.</p>
                 </div>
                 <div id="admin-workspace" class="hidden stack">
                     <div class="card">

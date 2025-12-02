@@ -1,8 +1,6 @@
 export const APP_ID_PREFIX = 'ODL';
-export const STORAGE_KEY = 'odl_offline_records_v2';
-export const ADMIN_ACCESS_CODE = 'admin';
-export const USE_API_STORAGE = false;
 export const DEFAULT_PAGE_SIZE = 30;
+export const USE_SUPABASE = true;
 
 export const FIELD_MAP = {
     id: ['ID', 'Id', 'id', 'Student ID', 'StudentID', 'Matric', 'MatricNo', 'Matric No', 'Student_Id'],
